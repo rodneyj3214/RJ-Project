@@ -9,7 +9,7 @@ from rj_project.users.views.users import (
 
 app_name = "users"
 urlpatterns = [
-    path("create", UserAPIView),
+    path("login", UserAPIView.as_view(), name="login"),
     path("~redirect/", view=user_redirect_view, name="redirect"),
     path("~update/", view=user_update_view, name="update"),
     path("<str:username>/", view=user_detail_view, name="detail"),

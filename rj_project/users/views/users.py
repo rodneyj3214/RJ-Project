@@ -16,7 +16,7 @@ User = get_user_model()
 class UserAPIView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = UserLoginSerializer(data=request.data)
-        serializer.is_valid(rise_exception=True)
+        serializer.is_valid(raise_exception=True)
         user, token = serializer.save()
         data = {"user": UserModelSerializer(user).data, "token": token}
         return Response(data, status=status.HTTP_201_CREATED)
