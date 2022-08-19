@@ -8,7 +8,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from rj_project.users.serializers.users import UserLoginSerializer, UserModelSerializer
+from rj_project.users.serializers.users import (
+    UserLoginSerializer,
+    UserModelSerializer,
+    UserSignupSerializer,
+)
 
 User = get_user_model()
 
@@ -19,6 +23,15 @@ class UserAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         user, token = serializer.save()
         data = {"user": UserModelSerializer(user).data, "token": token}
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+class UserSignupAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = UserSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        data = UserModelSerializer(user).data
         return Response(data, status=status.HTTP_201_CREATED)
 
 
