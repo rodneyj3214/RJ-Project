@@ -1,7 +1,11 @@
+from datetime import timedelta
+
+import jwt
+from django.conf import settings
 from django.contrib.auth import authenticate, password_validation
 from django.core.mail import EmailMultiAlternatives
 from django.core.validators import RegexValidator
-from django.template.loader import render_to_string
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from rest_framework.validators import UniqueValidator
@@ -72,21 +76,28 @@ class UserSignupSerializer(serializers.Serializer):
         data.pop("password_confirmation")
         user = User.objects.create_user(**data, is_verified=False)
         Profile.objects.create(user=user)
-        token = self.send_confirmation_email(user)
-        subject = f"Welcome @{user.username}! Verified you acoount"
-        from_email = "from@example.com"
-        text_content = render_to_string(
-            "account/verification_sent.html", {"token": token, "user": user}
-        )
-        html_content = "Hola"
-        msg = EmailMultiAlternatives(subject, text_content, from_email, [user.email])
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
+        self.send_confirmation_email(user)
         return user
 
     def send_confirmation_email(self, user):
         verification_token = "abc"
+        subject = f"Welcome @{user.username}! Verified you acoount"
+        from_email = "from@example.com"
+        token = self.gen_verification_token(user)
+        # text_content = render_to_string(
+        #     "account/verification_sent.html", {"token": token, "user": user}
+        # )
+        text_content = token
+        html_content = "Hola"
+        msg = EmailMultiAlternatives(subject, text_content, from_email, [user.email])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
         return verification_token
 
     def gen_verification_token(self, user):
-        return "abc"
+        exp_date = timezone.now() + timedelta(days=3)
+        payload = dict(
+            user=user.username, exp=int(exp_date.timestamp()), type="email_confirmation"
+        )
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return token
