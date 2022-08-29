@@ -11,9 +11,12 @@ from rest_framework.authtoken.models import Token
 from rest_framework.validators import UniqueValidator
 
 from rj_project.users.models import Profile, User
+from rj_project.users.serializers.profiles import ProfileModelSerializer
 
 
 class UserModelSerializer(serializers.ModelSerializer):
+    profile = ProfileModelSerializer(read_only=True)
+
     class Meta:
         model = User
         fields = (
@@ -22,6 +25,7 @@ class UserModelSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone_number",
+            "profile",
         )
 
 

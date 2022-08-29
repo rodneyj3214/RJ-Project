@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 from rj_project.circles.models import Circle
 from rj_project.circles.serializers.circles import CircleModelSerializer
 from rj_project.users.permissions import IsAccountOwner
+from rj_project.users.serializers.profiles import ProfileModelSerializer
 from rj_project.users.serializers.users import (
     AccountVerificationSerializer,
     UserLoginSerializer,
@@ -23,7 +24,9 @@ from rj_project.users.serializers.users import (
 User = get_user_model()
 
 
-class UserViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class UserViewSet(
+    mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet
+):
     """User ViewSet"""
 
     queryset = User.objects.filter(is_active=True, is_client=True)
@@ -33,19 +36,31 @@ class UserViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     def get_permissions(self):
         if self.action in ["signup", "login", "verify"]:
             permissions = [AllowAny]
-        elif self.action == "retrieve":
+        elif self.action in ["retrieve", "update", "partial_update"]:
             permissions = [IsAuthenticated, IsAccountOwner]
         else:
             permissions = [IsAuthenticated]
         return [permission() for permission in permissions]
 
-    @action(detail=False, methods=["post"])
-    def signup(self, request):
-        serializer = UserSignupSerializer(data=request.data)
+    @action(detail=True, methods=["put", "patch"])
+    def profile(self, request, *args, **kwargs):
+        user = self.get_object()
+        profile = user.profile
+        partial = request.method == "PATCH"
+
+        serializer = ProfileModelSerializer(profile, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        serializer.save()
         data = UserModelSerializer(user).data
-        return Response(data, status=status.HTTP_201_CREATED)
+        return Response(data)
+
+        @action(detail=False, methods=["post"])
+        def signup(self, request):
+            serializer = UserSignupSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            data = UserModelSerializer(user).data
+            return Response(data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=["post"])
     def login(self, request):
@@ -74,33 +89,6 @@ class UserViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         }
         response.data = data
         return response
-
-
-class UserAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = UserLoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user, token = serializer.save()
-        data = {"user": UserModelSerializer(user).data, "token": token}
-        return Response(data, status=status.HTTP_201_CREATED)
-
-
-class UserSignupAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = UserSignupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        data = UserModelSerializer(user).data
-        return Response(data, status=status.HTTP_201_CREATED)
-
-
-class AccountVerificationAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = AccountVerificationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        data = {"message": "Congratulations, now go share some rides!"}
-        return Response(data, status=status.HTTP_200_OK)
 
 
 class UserDetailView(LoginRequiredMixin, DetailView):
